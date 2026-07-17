@@ -1,50 +1,56 @@
 import assert from "node:assert/strict";
+import { access, readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
-async function render() {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", String(process.pid) + "-" + String(Date.now()));
-  const { default: worker } = await import(workerUrl.href);
+const projectRoot = new URL("../", import.meta.url);
 
-  return worker.fetch(
-    new Request("http://localhost/", {
-      headers: { accept: "text/html" },
-    }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
-  );
+async function listFiles(directoryUrl) {
+  const entries = await readdir(directoryUrl, { withFileTypes: true });
+  const files = [];
+
+  for (const entry of entries) {
+    const childUrl = new URL(entry.name + (entry.isDirectory() ? "/" : ""), directoryUrl);
+    if (entry.isDirectory()) {
+      files.push(...await listFiles(childUrl));
+    } else {
+      files.push(childUrl);
+    }
+  }
+
+  return files;
 }
 
-test("server-renders the KeyBridge SSO experience", async () => {
-  const response = await render();
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
+test("builds a Webpack host and federated remote", async () => {
+  const distribution = new URL("dist/", projectRoot);
+  const html = await readFile(new URL("index.html", distribution), "utf8");
+  const remoteEntry = await readFile(new URL("remote/remoteEntry.js", distribution), "utf8");
+  const files = await listFiles(distribution);
+  const hostScripts = files.filter((file) => file.pathname.endsWith(".js") && !file.pathname.includes("/remote/"));
+  const hostSource = (await Promise.all(hostScripts.map((file) => readFile(file, "utf8")))).join("\n");
 
-  const html = await response.text();
-  assert.match(html, /<title>KeyBridge \| Single Sign-On Application Demo<\/title>/i);
-  assert.match(html, /One identity\./);
-  assert.match(html, /Every app\./);
-  assert.match(html, /Start a demo session/);
-  assert.match(html, /No real credentials/);
-  assert.match(html, /Authorization Code \+ PKCE/);
-  assert.match(html, /Role-based access/);
-  assert.doesNotMatch(html, /codex-preview/);
-  assert.doesNotMatch(html, /Your site is taking shape/);
+  assert.match(html, /<title>KeyBridge \| Webpack Module Federation SSO<\/title>/i);
+  assert.match(html, /id="root"/);
+  assert.match(html, /og\.png/);
+  assert.match(remoteEntry, /KeyBridgeExperience/);
+  assert.match(hostSource, /keybridgeRemote/);
+  assert.match(hostSource, /remoteEntry\.js/);
+  await access(new URL("og.png", distribution));
 });
 
-test("includes accessible navigation and a live status region", async () => {
-  const response = await render();
-  const html = await response.text();
+test("declares isolated names and shared React singletons", async () => {
+  const [hostConfig, remoteConfig, sharedConfig] = await Promise.all([
+    readFile(new URL("webpack.host.config.mjs", projectRoot), "utf8"),
+    readFile(new URL("webpack.remote.config.mjs", projectRoot), "utf8"),
+    readFile(new URL("webpack.shared.mjs", projectRoot), "utf8"),
+  ]);
 
-  assert.match(html, /Skip to main content/);
-  assert.match(html, /aria-live="polite"/);
-  assert.match(html, /aria-label="Project navigation"/);
-  assert.match(html, /Educational simulation only/);
+  assert.match(hostConfig, /ModuleFederationPlugin/);
+  assert.match(hostConfig, /uniqueName: "keybridgeHost"/);
+  assert.match(hostConfig, /keybridgeRemote@\/remote\/remoteEntry\.js/);
+  assert.match(remoteConfig, /filename: "remoteEntry\.js"/);
+  assert.match(remoteConfig, /"\.\/KeyBridgeExperience"/);
+  assert.match(remoteConfig, /uniqueName: "keybridgeRemote"/);
+  assert.match(sharedConfig, /react:/);
+  assert.match(sharedConfig, /"react-dom"/);
+  assert.match(sharedConfig, /singleton: true/g);
 });

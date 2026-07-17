@@ -1,28 +1,57 @@
 # KeyBridge SSO Lab
 
-KeyBridge is an original, interactive single sign-on demonstration built with React, TypeScript, and Next.js. One fictional identity session unlocks a suite of connected applications without asking the user to sign in again.
+KeyBridge is an original single sign-on demonstration implemented as a Webpack 5 Module Federation application. A small host shell loads the full identity experience from an independently compiled remote container at runtime.
 
 > Educational simulation only. KeyBridge does not collect credentials, issue real tokens, or replace a production identity provider.
 
+## Module Federation architecture
+
+    Browser
+       |
+       v
+    KeyBridge Host :3000
+       |
+       | loads remoteEntry.js at runtime
+       v
+    KeyBridge Experience Remote :3001
+       |
+       +-- shared React singleton
+       +-- SSO identity chooser
+       +-- connected application launcher
+       +-- role checks and audit events
+
+The host and remote are separate Webpack compilations with different unique names. The remote exposes KeyBridgeExperience through remoteEntry.js, and the host consumes it asynchronously. React and React DOM are shared as singleton dependencies so both builds use the same runtime.
+
+Production builds place the remote container under dist/remote and configure the host to load it from the same origin. Development runs the host and remote on separate ports to demonstrate the independently served micro-frontend boundary.
+
 ## Portfolio highlights
 
-- One-click fictional identity session shared across five connected applications
-- Application launcher for Mail, Files, Calendar, Analytics, and an Admin Console
-- Role-based access control with visible access-denied behavior
-- Illustrative OpenID Connect claims and an Authorization Code + PKCE trace
-- Global sign-out and authentication audit events
+- Webpack 5 ModuleFederationPlugin with a host-and-remote topology
+- Runtime remote loading with React Suspense and an error boundary
+- Unique build names that prevent Webpack runtime collisions
+- Shared singleton React and React DOM dependencies
+- One fictional identity session across five connected applications
+- Role-based access, global sign-out, illustrative claims, and audit events
 - Responsive, keyboard-friendly interface with reduced-motion support
-- Automated server-rendering and identity-domain tests
+- Automated tests for federation artifacts, security-domain logic, and build configuration
 
-## How the demonstration works
+## Commands
 
-1. A person chooses a fictional KeyBridge profile.
-2. KeyBridge creates a browser-local demo session; no password is requested.
-3. Each application checks the roles associated with that identity.
-4. Permitted applications open without another sign-in.
-5. Global sign-out clears the shared demo session for every application.
+- npm install — install the locked dependencies
+- npm run dev — start the remote on port 3001, then the host on port 3000
+- npm run build — type-check and create both production compilations
+- npm run lint — check the host, remote, and Webpack configuration
+- npm test — build and run all automated tests
 
-The pure functions in lib/sso.mjs model registered clients, exact redirect URIs, PKCE authorization requests, short-lived claims, role checks, and bounded audit logs. The visual application intentionally keeps these flows simulated so the public demo cannot be mistaken for a production security system.
+## Important files
+
+- webpack.host.config.mjs — host container and runtime remote definition
+- webpack.remote.config.mjs — remote container and exposed experience
+- webpack.shared.mjs — loaders, paths, and shared dependency policy
+- src/host — asynchronous host bootstrap and federation fallback UI
+- src/remote — the exposed KeyBridge product experience
+- src/types/remotes.d.ts — TypeScript contract for the runtime remote
+- lib/sso.mjs — pure SSO domain functions used by automated tests
 
 ## Security concepts represented
 
@@ -35,10 +64,12 @@ The pure functions in lib/sso.mjs model registered clients, exact redirect URIs,
 - Global session termination
 - Authentication observability
 
-## Open-source and standards references
+## References
 
-The implementation is original. These sources informed the terminology and product architecture:
+The implementation is original. These sources informed the architecture and terminology:
 
+- Webpack Module Federation: https://webpack.js.org/concepts/module-federation/
+- Module Federation examples: https://github.com/module-federation/module-federation-examples
 - OpenID Connect Core 1.0: https://openid.net/specs/openid-connect-core-1_0-final.html
 - OAuth 2.0 Security Best Current Practice, RFC 9700: https://www.rfc-editor.org/rfc/rfc9700
 - Keycloak: https://github.com/keycloak/keycloak
@@ -46,12 +77,6 @@ The implementation is original. These sources informed the terminology and produ
 - ZITADEL: https://github.com/zitadel/zitadel
 
 No source code was copied from these projects.
-
-## Local development
-
-Install dependencies, start the development server, and open the local URL shown in the terminal.
-
-For quality checks, run the test, lint, and production build scripts defined in package.json.
 
 ## License
 
