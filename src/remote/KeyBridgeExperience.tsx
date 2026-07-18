@@ -257,6 +257,7 @@ export default function Home() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordChangeError, setPasswordChangeError] = useState("");
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState("");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const activeApplication = useMemo(
     () => applications.find((application) => application.id === activeApp) ?? null,
@@ -409,7 +410,7 @@ export default function Home() {
           <span>KeyBridge</span>
           <small>SSO Lab</small>
         </a>
-        {session && (
+        {session && !profileOpen && (
           <nav aria-label="Project navigation">
             <a href="#how-it-works">How it works</a>
             <a href="#security">Security</a>
@@ -529,9 +530,77 @@ export default function Home() {
             </div>
           </div>
         </section>
+      ) : profileOpen ? (
+        <section className="profile-page-shell" id="main-content">
+          <section className="account-profile-page" aria-labelledby="profile-page-title">
+            <button className="profile-back-button" type="button" onClick={openWorkspace}>← Back to workspace</button>
+            <div className="profile-page-heading">
+              <span>
+                <small>My account</small>
+                <h2 id="profile-page-title">Profile &amp; security</h2>
+                <p>Review your identity details and manage the password used by this local demo.</p>
+              </span>
+              <span className="profile-security-status"><StatusDot /> Identity verified</span>
+            </div>
+
+            <div className="profile-page-grid">
+              <article className="profile-details-card">
+                <div className="profile-identity-summary">
+                  <span className={"profile-avatar profile-avatar-large " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
+                  <span>
+                    <small>{isAdministrator ? "Administrator account" : "Member account"}</small>
+                    <h3>{session.name}</h3>
+                    <p>{session.roles.join(" · ")}</p>
+                  </span>
+                </div>
+                <dl className="profile-details-list">
+                  <div><dt>Full name</dt><dd>{session.name}</dd></div>
+                  <div><dt>Phone number</dt><dd>{phoneNumber}<small>Fictional demo number</small></dd></div>
+                  <div><dt>Email address</dt><dd>{session.email}</dd></div>
+                  <div><dt>Time zone</dt><dd>{timezone}<small>Detected from this browser</small></dd></div>
+                  <div><dt>Account type</dt><dd>{isAdministrator ? "Workspace administrator" : "Workspace member"}</dd></div>
+                </dl>
+              </article>
+
+              <article className="password-management-card">
+                <div className="security-card-heading">
+                  <span className="security-card-icon" aria-hidden="true">•••</span>
+                  <span><small>Account security</small><h3>Change password</h3></span>
+                </div>
+                <p>Update the password for this fictional account on the current browser only.</p>
+                <form className="password-change-form" onSubmit={handlePasswordChange}>
+                  <label htmlFor="current-password">Current password</label>
+                  <input id="current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => { setCurrentPassword(event.target.value); setPasswordChangeError(""); setPasswordChangeSuccess(""); }} required />
+                  <label htmlFor="new-password">New password</label>
+                  <input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => { setNewPassword(event.target.value); setPasswordChangeError(""); setPasswordChangeSuccess(""); }} required />
+                  <label htmlFor="confirm-password">Confirm new password</label>
+                  <input id="confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => { setConfirmPassword(event.target.value); setPasswordChangeError(""); setPasswordChangeSuccess(""); }} required />
+                  <ul className="password-requirements" aria-label="Password requirements">
+                    <li>At least 10 characters</li>
+                    <li>Uppercase and lowercase letters</li>
+                    <li>At least one number</li>
+                  </ul>
+                  {passwordChangeError && <p className="password-message error" role="alert">{passwordChangeError}</p>}
+                  {passwordChangeSuccess && <p className="password-message success" role="status">{passwordChangeSuccess}</p>}
+                  <button type="submit">Update demo password</button>
+                </form>
+                <div className="local-security-note"><span aria-hidden="true">i</span>This client-side demonstration stores the changed password only in this browser. It is not production credential management.</div>
+              </article>
+            </div>
+          </section>
+        </section>
       ) : (
-        <section className={"workspace " + (isAdministrator ? "admin-workspace" : "member-workspace")} id="main-content">
+        <section className={"workspace " + (isAdministrator ? "admin-workspace" : "member-workspace") + (sidebarCollapsed ? " sidebar-collapsed" : "")} id="main-content">
           <aside className="workspace-sidebar">
+            <button
+              className="sidebar-toggle"
+              type="button"
+              onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+              aria-expanded={!sidebarCollapsed}
+              aria-label={sidebarCollapsed ? "Expand side navigation" : "Collapse side navigation"}
+            >
+              <span aria-hidden="true">☰</span><b>{sidebarCollapsed ? "Expand" : "Collapse"}</b>
+            </button>
             <div className="sidebar-profile">
               <span className={"profile-avatar " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
               <span>
@@ -546,79 +615,19 @@ export default function Home() {
               <small>{isAdministrator ? "Managing 128 workspace members" : "Access follows your assigned roles"}</small>
             </div>
             <nav aria-label="Workspace sections">
-              <button type="button" className={!activeApp && !profileOpen ? "active" : ""} onClick={() => { setActiveApp(null); openWorkspace(); }}>
-                <span aria-hidden="true">⌂</span> {isAdministrator ? "Admin overview" : "My applications"}
+              <button type="button" className={!activeApp ? "active" : ""} onClick={() => setActiveApp(null)} title={isAdministrator ? "Admin overview" : "My applications"}>
+                <span aria-hidden="true">⌂</span><b>{isAdministrator ? "Admin overview" : "My applications"}</b>
               </button>
-              <button type="button" onClick={() => setProtocolOpen((open) => !open)}>
-                <span aria-hidden="true">↔</span> {isAdministrator ? "Protocol health" : "Protocol trace"}
+              <button type="button" onClick={() => setProtocolOpen((open) => !open)} title={isAdministrator ? "Protocol health" : "Protocol trace"}>
+                <span aria-hidden="true">↔</span><b>{isAdministrator ? "Protocol health" : "Protocol trace"}</b>
               </button>
-              <a href="#audit"><span aria-hidden="true">◷</span> {isAdministrator ? "Security audit" : "My activity"}</a>
-              <button type="button" className={profileOpen ? "active" : ""} onClick={openProfile}>
-                <span aria-hidden="true">◎</span> Account profile
-              </button>
+              <a href="#audit" title={isAdministrator ? "Security audit" : "My activity"}><span aria-hidden="true">◷</span><b>{isAdministrator ? "Security audit" : "My activity"}</b></a>
             </nav>
-            <button className="sidebar-signout" type="button" onClick={signOut}>Sign out everywhere</button>
+            <button className="sidebar-signout" type="button" onClick={signOut} title="Sign out everywhere"><span aria-hidden="true">↪</span><b>Sign out everywhere</b></button>
           </aside>
 
           <div className="workspace-main">
-            {profileOpen ? (
-              <section className="account-profile-page" aria-labelledby="profile-page-title">
-                <button className="profile-back-button" type="button" onClick={openWorkspace}>← Back to workspace</button>
-                <div className="profile-page-heading">
-                  <span>
-                    <small>My account</small>
-                    <h2 id="profile-page-title">Profile &amp; security</h2>
-                    <p>Review your identity details and manage the password used by this local demo.</p>
-                  </span>
-                  <span className="profile-security-status"><StatusDot /> Identity verified</span>
-                </div>
-
-                <div className="profile-page-grid">
-                  <article className="profile-details-card">
-                    <div className="profile-identity-summary">
-                      <span className={"profile-avatar profile-avatar-large " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
-                      <span>
-                        <small>{isAdministrator ? "Administrator account" : "Member account"}</small>
-                        <h3>{session.name}</h3>
-                        <p>{session.roles.join(" · ")}</p>
-                      </span>
-                    </div>
-                    <dl className="profile-details-list">
-                      <div><dt>Full name</dt><dd>{session.name}</dd></div>
-                      <div><dt>Phone number</dt><dd>{phoneNumber}<small>Fictional demo number</small></dd></div>
-                      <div><dt>Email address</dt><dd>{session.email}</dd></div>
-                      <div><dt>Time zone</dt><dd>{timezone}<small>Detected from this browser</small></dd></div>
-                      <div><dt>Account type</dt><dd>{isAdministrator ? "Workspace administrator" : "Workspace member"}</dd></div>
-                    </dl>
-                  </article>
-
-                  <article className="password-management-card">
-                    <div className="security-card-heading">
-                      <span className="security-card-icon" aria-hidden="true">•••</span>
-                      <span><small>Account security</small><h3>Change password</h3></span>
-                    </div>
-                    <p>Update the password for this fictional account on the current browser only.</p>
-                    <form className="password-change-form" onSubmit={handlePasswordChange}>
-                      <label htmlFor="current-password">Current password</label>
-                      <input id="current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => { setCurrentPassword(event.target.value); setPasswordChangeError(""); setPasswordChangeSuccess(""); }} required />
-                      <label htmlFor="new-password">New password</label>
-                      <input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => { setNewPassword(event.target.value); setPasswordChangeError(""); setPasswordChangeSuccess(""); }} required />
-                      <label htmlFor="confirm-password">Confirm new password</label>
-                      <input id="confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => { setConfirmPassword(event.target.value); setPasswordChangeError(""); setPasswordChangeSuccess(""); }} required />
-                      <ul className="password-requirements" aria-label="Password requirements">
-                        <li>At least 10 characters</li>
-                        <li>Uppercase and lowercase letters</li>
-                        <li>At least one number</li>
-                      </ul>
-                      {passwordChangeError && <p className="password-message error" role="alert">{passwordChangeError}</p>}
-                      {passwordChangeSuccess && <p className="password-message success" role="status">{passwordChangeSuccess}</p>}
-                      <button type="submit">Update demo password</button>
-                    </form>
-                    <div className="local-security-note"><span aria-hidden="true">i</span>This client-side demonstration stores the changed password only in this browser. It is not production credential management.</div>
-                  </article>
-                </div>
-              </section>
-            ) : !activeApplication ? (
+            {!activeApplication ? (
               <>
                 <div className="workspace-heading">
                   <span>
@@ -768,7 +777,7 @@ export default function Home() {
         </section>
       )}
 
-      {session && <><section className="explainer" id="how-it-works">
+      {session && !profileOpen && <><section className="explainer" id="how-it-works">
         <div className="explainer-heading">
           <span className="eyebrow">Authorization Code + PKCE</span>
           <h2>One authentication,<br />five trusted applications.</h2>

@@ -886,6 +886,11 @@ a {
   display: grid;
   grid-template-columns: 260px 1fr;
   min-height: calc(100vh - 76px);
+  transition: grid-template-columns 180ms ease;
+}
+
+.workspace.sidebar-collapsed {
+  grid-template-columns: 76px 1fr;
 }
 
 .workspace-sidebar {
@@ -894,6 +899,54 @@ a {
   display: flex;
   flex-direction: column;
   padding: 1.5rem;
+  transition: padding 180ms ease;
+}
+
+.sidebar-toggle {
+  align-items: center;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.65rem;
+  color: #c7c9d7;
+  display: flex;
+  font-size: 0.68rem;
+  gap: 0.65rem;
+  margin-bottom: 1.2rem;
+  min-height: 38px;
+  padding: 0.55rem 0.7rem;
+  width: 100%;
+}
+
+.sidebar-toggle span {
+  font-size: 1rem;
+}
+
+.sidebar-collapsed .workspace-sidebar {
+  padding: 1rem 0.7rem;
+}
+
+.sidebar-collapsed .sidebar-toggle {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.sidebar-collapsed .sidebar-toggle b,
+.sidebar-collapsed .sidebar-profile > span:last-child,
+.sidebar-collapsed .session-health,
+.sidebar-collapsed .workspace-sidebar nav b,
+.sidebar-collapsed .sidebar-signout b {
+  display: none;
+}
+
+.sidebar-collapsed .sidebar-profile {
+  justify-content: center;
+}
+
+.sidebar-collapsed .workspace-sidebar nav button,
+.sidebar-collapsed .workspace-sidebar nav a,
+.sidebar-collapsed .sidebar-signout {
+  justify-content: center;
+  padding-inline: 0;
 }
 
 .admin-workspace .workspace-sidebar {
@@ -1011,11 +1064,15 @@ a {
 }
 
 .sidebar-signout {
+  align-items: center;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 0.7rem;
   color: #aeb0c4;
   font-size: 0.7rem;
+  display: flex;
+  gap: 0.55rem;
+  justify-content: center;
   margin-top: auto;
   padding: 0.75rem;
 }
@@ -1027,6 +1084,12 @@ a {
 .account-profile-page {
   margin: 0 auto;
   max-width: 1120px;
+}
+
+.profile-page-shell {
+  background: var(--paper);
+  min-height: calc(100vh - 76px);
+  padding: 2.5rem clamp(1.5rem, 5vw, 5rem);
 }
 
 .profile-back-button {
@@ -2349,6 +2412,14 @@ a:focus-visible {
 
   .workspace {
     grid-template-columns: 1fr;
+  }
+
+  .workspace.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-toggle {
+    display: none;
   }
 
   .workspace-sidebar {
