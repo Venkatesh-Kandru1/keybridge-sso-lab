@@ -2,10 +2,30 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   addAuditEvent,
+  authenticateDemoCredentials,
   canAccessApplication,
   createAuthorizationRequest,
   createDemoClaims,
 } from "../lib/sso.mjs";
+
+test("authenticates only the documented fictional demo accounts", () => {
+  const accounts = [
+    {
+      password: "local-test-password",
+      persona: {
+        name: "Local Test Member",
+        email: "member@example.test",
+        initials: "LT",
+        roles: ["Member"],
+      },
+    },
+  ];
+  const member = authenticateDemoCredentials(accounts, "  MEMBER@EXAMPLE.TEST ", "local-test-password");
+  assert.equal(member?.name, "Local Test Member");
+  assert.deepEqual(member?.roles, ["Member"]);
+  assert.equal(authenticateDemoCredentials(accounts, "member@example.test", "incorrect"), null);
+  assert.equal(authenticateDemoCredentials(accounts, "unknown@example.test", "local-test-password"), null);
+});
 
 test("enforces application roles", () => {
   assert.equal(canAccessApplication("mail", ["Member"]), true);
@@ -33,10 +53,11 @@ test("issues short-lived illustrative claims", () => {
   const claims = createDemoClaims({
     subject: "usr_vk_2026",
     audience: "keybridge-mail",
-    email: "venkatesh@keybridge.dev",
+    email: "member@example.test",
     roles: ["Member"],
   });
   assert.equal(claims.iss, "https://id.keybridge.demo");
+  assert.equal(claims.email, "member@example.test");
   assert.equal(claims.exp - claims.iat, 900);
   assert.deepEqual(claims.roles, ["Member"]);
 });

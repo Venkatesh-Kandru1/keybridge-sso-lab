@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
+import { authenticateDemoCredentials } from "../../lib/sso.mjs";
 
 type Persona = {
   name: string;
@@ -15,20 +16,26 @@ type AuditEvent = {
   time: string;
 };
 
-const personas: Persona[] = [
+const demoAccounts = [
   {
-    name: "Venkatesh Kandru",
-    email: "venkatesh@keybridge.dev",
-    initials: "VK",
-    roles: ["Member", "Analyst"],
+    password: process.env.KEYBRIDGE_MEMBER_PASSWORD ?? "",
+    persona: {
+      name: "Venkatesh Kandru",
+      email: process.env.KEYBRIDGE_MEMBER_EMAIL ?? "",
+      initials: "VK",
+      roles: ["Member", "Analyst"],
+    },
   },
   {
-    name: "Demo Administrator",
-    email: "admin@keybridge.dev",
-    initials: "DA",
-    roles: ["Member", "Analyst", "Administrator"],
+    password: process.env.KEYBRIDGE_ADMIN_PASSWORD ?? "",
+    persona: {
+      name: "Demo Administrator",
+      email: process.env.KEYBRIDGE_ADMIN_EMAIL ?? "",
+      initials: "DA",
+      roles: ["Member", "Analyst", "Administrator"],
+    },
   },
-];
+].filter((account) => account.persona.email && account.password);
 
 const applications = [
   {
@@ -222,6 +229,10 @@ export default function Home() {
   const [protocolOpen, setProtocolOpen] = useState(false);
   const [liveMessage, setLiveMessage] = useState("Demo ready");
   const [audit, setAudit] = useState<AuditEvent[]>([]);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [signInError, setSignInError] = useState("");
 
   const activeApplication = useMemo(
     () => applications.find((application) => application.id === activeApp) ?? null,
@@ -248,6 +259,21 @@ export default function Home() {
     setLiveMessage("Signed in once. All permitted applications are now available.");
   }
 
+  function handleSignIn(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const persona = authenticateDemoCredentials(demoAccounts, email, password) as Persona | null;
+
+    if (!persona) {
+      setSignInError("The email or password does not match the locally configured demo credentials.");
+      setLiveMessage("Sign-in failed. Check the demo email and password.");
+      return;
+    }
+
+    setSignInError("");
+    setPassword("");
+    signIn(persona);
+  }
+
   function launchApp(appId: AppId) {
     if (!session) return;
     const application = applications.find((item) => item.id === appId);
@@ -267,6 +293,9 @@ export default function Home() {
     setSession(null);
     setActiveApp(null);
     setAudit([]);
+    setEmail("");
+    setPassword("");
+    setSignInError("");
     setLiveMessage("Global sign-out completed across every connected app.");
   }
 
@@ -281,11 +310,13 @@ export default function Home() {
           <span>KeyBridge</span>
           <small>SSO Lab</small>
         </a>
-        <nav aria-label="Project navigation">
-          <a href="#how-it-works">How it works</a>
-          <a href="#security">Security</a>
-          <a href="https://github.com/Venkatesh-Kandru1/keybridge-sso-lab">GitHub</a>
-        </nav>
+        {session && (
+          <nav aria-label="Project navigation">
+            <a href="#how-it-works">How it works</a>
+            <a href="#security">Security</a>
+            <a href="https://github.com/Venkatesh-Kandru1/keybridge-sso-lab">GitHub</a>
+          </nav>
+        )}
         {session ? (
           <button className="ghost-button" type="button" onClick={signOut}>Sign out everywhere</button>
         ) : (
@@ -294,57 +325,85 @@ export default function Home() {
       </header>
 
       {!session ? (
-        <section className="hero" id="main-content">
-          <div className="hero-copy">
-            <span className="eyebrow">OpenID Connect learning project</span>
-            <h1>One identity.<br /><em>Every app.</em></h1>
+        <section className="login-page" id="main-content">
+          <div className="login-intro">
+            <span className="eyebrow">KeyBridge Identity</span>
+            <h1>One secure sign-in.<br /><em>Every connected app.</em></h1>
             <p>
-              Experience how a central identity provider can authenticate someone once,
-              then securely grant access to an entire suite of connected applications.
+              Sign in once to enter your KeyBridge workspace, then open every application
+              your role allows without entering your credentials again.
             </p>
-            <div className="trust-row">
-              <span><StatusDot /> No real credentials</span>
-              <span>OIDC concepts</span>
-              <span>Role-based access</span>
+            <div className="login-benefits" aria-label="KeyBridge demo benefits">
+              <span><b>01</b> Central identity</span>
+              <span><b>02</b> Role-based access</span>
+              <span><b>03</b> Global sign-out</span>
             </div>
           </div>
 
-          <div className="signin-card" aria-labelledby="signin-title">
+          <div className="login-card" aria-labelledby="signin-title">
             <div className="signin-heading">
               <ProductMark />
               <span>
-                <small>KeyBridge Identity</small>
-                <strong id="signin-title">Start a demo session</strong>
+                <small>Welcome to KeyBridge</small>
+                <strong id="signin-title">Sign in to your workspace</strong>
               </span>
             </div>
-            <p>Choose a fictional profile. This demonstration never asks for a password or external account.</p>
-            <div className="profile-options">
-              {personas.map((persona, index) => (
-                <button type="button" key={persona.email} onClick={() => signIn(persona)}>
-                  <span className={"profile-avatar profile-" + index}>{persona.initials}</span>
-                  <span>
-                    <strong>{persona.name}</strong>
-                    <small>{persona.roles.join(" · ")}</small>
-                  </span>
-                  <b aria-hidden="true">→</b>
+            <p className="login-description">Use the fictional credentials saved in your local environment file. Never enter a real email address or password.</p>
+
+            <form className="login-form" onSubmit={handleSignIn} noValidate>
+              <label htmlFor="email">Email address</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="username"
+                placeholder="name@keybridge.dev"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setSignInError("");
+                }}
+                required
+              />
+
+              <div className="password-label">
+                <label htmlFor="password">Password</label>
+                <span>Demo credentials only</span>
+              </div>
+              <div className="password-field">
+                <input
+                  id="password"
+                  name="password"
+                  type={passwordVisible ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Enter demo password"
+                  value={password}
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setSignInError("");
+                  }}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setPasswordVisible((visible) => !visible)}
+                  aria-label={passwordVisible ? "Hide password" : "Show password"}
+                >
+                  {passwordVisible ? "Hide" : "Show"}
                 </button>
-              ))}
-            </div>
+              </div>
+
+              {signInError && <p className="login-error" role="alert">{signInError}</p>}
+
+              <button className="primary-signin" type="submit">
+                Sign in securely <span aria-hidden="true">→</span>
+              </button>
+            </form>
+
             <div className="signin-note">
               <span aria-hidden="true">i</span>
-              Educational simulation only. Not a production identity provider.
+              Educational simulation only. Local credentials do not protect real data and are never committed to the repository.
             </div>
-          </div>
-
-          <div className="network-visual" aria-label="One identity provider connected to five applications">
-            <div className="orbit orbit-one" />
-            <div className="orbit orbit-two" />
-            <div className="identity-node"><ProductMark /><strong>KeyBridge ID</strong><small>Authenticated</small></div>
-            {applications.map((application, index) => (
-              <div className={"network-app network-app-" + index} key={application.id}>
-                <span>{application.monogram}</span><small>{application.name}</small>
-              </div>
-            ))}
           </div>
         </section>
       ) : (
@@ -488,7 +547,7 @@ export default function Home() {
         </section>
       )}
 
-      <section className="explainer" id="how-it-works">
+      {session && <><section className="explainer" id="how-it-works">
         <div className="explainer-heading">
           <span className="eyebrow">Authorization Code + PKCE</span>
           <h2>One authentication,<br />five trusted applications.</h2>
@@ -526,6 +585,7 @@ export default function Home() {
         <p>Original educational SSO demonstration by Venkatesh Kandru.</p>
         <a href="https://github.com/Venkatesh-Kandru1/keybridge-sso-lab">View source on GitHub ↗</a>
       </footer>
+      </>}
     </main>
   );
 }
