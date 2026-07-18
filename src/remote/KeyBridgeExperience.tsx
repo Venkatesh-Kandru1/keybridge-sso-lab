@@ -103,6 +103,8 @@ const applications = [
 
 type AppId = (typeof applications)[number]["id"];
 
+const workspaceMemberCount = 20;
+
 function readPasswordOverrides(): PasswordOverrides {
   try {
     const storedValue = window.localStorage.getItem(passwordOverridesKey);
@@ -239,7 +241,7 @@ function AppPreview({ appId }: { appId: AppId }) {
     <div className="admin-preview">
       <div className="admin-summary">
         <span>Workspace access</span>
-        <strong>128 people</strong>
+        <strong>{workspaceMemberCount} people</strong>
         <small>4 role groups · 5 connected apps</small>
       </div>
       {[
@@ -736,7 +738,7 @@ export default function Home() {
               aria-expanded={!sidebarCollapsed}
               aria-label={sidebarCollapsed ? "Expand side navigation" : "Collapse side navigation"}
             >
-              <span aria-hidden="true">☰</span><b>{sidebarCollapsed ? "Expand" : "Collapse"}</b>
+              <b>{sidebarCollapsed ? "Expand" : "Collapse"}</b><span aria-hidden="true">☰</span>
             </button>
             <div className="sidebar-profile">
               <span className={"profile-avatar " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
@@ -749,7 +751,7 @@ export default function Home() {
             <div className="session-health">
               <span><StatusDot /> {isAdministrator ? "Administrator session" : "Member session"}</span>
               <strong>{visibleApplications.length} available apps</strong>
-              <small>{isAdministrator ? "Managing 128 workspace members" : "Access follows your assigned roles"}</small>
+              <small>{isAdministrator ? "Managing " + workspaceMemberCount + " workspace members" : "Access follows your assigned roles"}</small>
             </div>
             <nav aria-label="Workspace sections">
               <button type="button" className={!activeApp ? "active" : ""} onClick={() => setActiveApp(null)} title={isAdministrator ? "Admin overview" : "My applications"}>
@@ -784,7 +786,7 @@ export default function Home() {
                 <section className={"workspace-overview " + (isAdministrator ? "admin-overview" : "member-overview")} aria-label={isAdministrator ? "Administrator metrics" : "Member summary"}>
                   {(isAdministrator
                     ? [
-                        ["128", "Workspace members", "124 active · 4 invited"],
+                        [String(workspaceMemberCount), "Workspace members", "16 active · 4 invited"],
                         ["5", "Connected applications", "All services healthy"],
                         ["4", "Role groups", "Least-privilege policies"],
                         ["3", "Policy reviews", "Due this week"],
