@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { authenticateDemoCredentials } from "../../lib/sso.mjs";
+import { authenticateDemoCredentials, getVisibleApplicationIds } from "../../lib/sso.mjs";
 
 type Persona = {
   name: string;
@@ -238,6 +238,11 @@ export default function Home() {
     () => applications.find((application) => application.id === activeApp) ?? null,
     [activeApp],
   );
+  const isAdministrator = session?.roles.includes("Administrator") ?? false;
+  const visibleApplicationIds = getVisibleApplicationIds(session?.roles ?? []);
+  const visibleApplications = applications.filter((application) =>
+    visibleApplicationIds.includes(application.id),
+  );
 
   function addAudit(action: string, detail: string, status: AuditEvent["status"]) {
     setAudit((events) => [
@@ -407,28 +412,29 @@ export default function Home() {
           </div>
         </section>
       ) : (
-        <section className="workspace" id="main-content">
+        <section className={"workspace " + (isAdministrator ? "admin-workspace" : "member-workspace")} id="main-content">
           <aside className="workspace-sidebar">
             <div className="sidebar-profile">
-              <span className="profile-avatar profile-0">{session.initials}</span>
+              <span className={"profile-avatar " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
               <span>
                 <strong>{session.name}</strong>
                 <small>{session.email}</small>
+                <b className="workspace-context">{isAdministrator ? "Administrator workspace" : "Member workspace"}</b>
               </span>
             </div>
             <div className="session-health">
-              <span><StatusDot /> SSO session active</span>
-              <strong>One sign-in</strong>
-              <small>Valid across 5 connected apps</small>
+              <span><StatusDot /> {isAdministrator ? "Administrator session" : "Member session"}</span>
+              <strong>{visibleApplications.length} available apps</strong>
+              <small>{isAdministrator ? "Managing 128 workspace members" : "Access follows your assigned roles"}</small>
             </div>
             <nav aria-label="Workspace sections">
               <button type="button" className={!activeApp ? "active" : ""} onClick={() => setActiveApp(null)}>
-                <span aria-hidden="true">⌂</span> App launcher
+                <span aria-hidden="true">⌂</span> {isAdministrator ? "Admin overview" : "My applications"}
               </button>
               <button type="button" onClick={() => setProtocolOpen((open) => !open)}>
-                <span aria-hidden="true">↔</span> Protocol trace
+                <span aria-hidden="true">↔</span> {isAdministrator ? "Protocol health" : "Protocol trace"}
               </button>
-              <a href="#audit"><span aria-hidden="true">◷</span> Audit events</a>
+              <a href="#audit"><span aria-hidden="true">◷</span> {isAdministrator ? "Security audit" : "My activity"}</a>
             </nav>
             <button className="sidebar-signout" type="button" onClick={signOut}>Sign out everywhere</button>
           </aside>
@@ -438,25 +444,56 @@ export default function Home() {
               <>
                 <div className="workspace-heading">
                   <span>
-                    <small>Welcome back</small>
-                    <h2>Your connected workspace</h2>
-                    <p>Select any permitted app. KeyBridge reuses your existing identity session.</p>
+                    <small>{isAdministrator ? "Administration center" : "Welcome back"}</small>
+                    <h2>{isAdministrator ? "Workspace access overview" : "Your connected workspace"}</h2>
+                    <p>
+                      {isAdministrator
+                        ? "Monitor identities, applications, roles, and authentication health across KeyBridge."
+                        : "Open your approved applications. KeyBridge reuses your existing identity session."}
+                    </p>
                   </span>
                   <div className="role-pills" aria-label="Current roles">
                     {session.roles.map((role) => <span key={role}>{role}</span>)}
                   </div>
                 </div>
 
+                <section className={"workspace-overview " + (isAdministrator ? "admin-overview" : "member-overview")} aria-label={isAdministrator ? "Administrator metrics" : "Member summary"}>
+                  {(isAdministrator
+                    ? [
+                        ["128", "Workspace members", "124 active · 4 invited"],
+                        ["5", "Connected applications", "All services healthy"],
+                        ["4", "Role groups", "Least-privilege policies"],
+                        ["3", "Policy reviews", "Due this week"],
+                      ]
+                    : [
+                        [String(visibleApplications.length), "Available applications", "Approved for your roles"],
+                        ["8", "Unread messages", "In Pulse Mail"],
+                        ["3", "Events today", "In Moment Calendar"],
+                        ["1", "Active SSO session", "Protected with PKCE"],
+                      ]
+                  ).map((metric) => (
+                    <article key={metric[1]}>
+                      <strong>{metric[0]}</strong>
+                      <span>{metric[1]}</span>
+                      <small>{metric[2]}</small>
+                    </article>
+                  ))}
+                </section>
+
+                <div className="workspace-section-title">
+                  <span>
+                    <small>{isAdministrator ? "Application management" : "Single sign-on launcher"}</small>
+                    <h3>{isAdministrator ? "Managed applications" : "Your applications"}</h3>
+                  </span>
+                  <p>{isAdministrator ? "Organization-wide access" : "Only apps allowed by your roles are shown"}</p>
+                </div>
+
                 <div className="app-grid">
-                  {applications.map((application) => {
-                    const allowed = session.roles.includes(application.requiredRole);
-                    return (
+                  {visibleApplications.map((application) => (
                       <article className={"app-card app-" + application.id} key={application.id}>
                         <div className="app-card-top">
                           <span className="app-icon">{application.monogram}</span>
-                          <span className={allowed ? "access-chip allowed" : "access-chip blocked"}>
-                            {allowed ? "SSO ready" : application.requiredRole + " role"}
-                          </span>
+                          <span className="access-chip allowed">SSO ready</span>
                         </div>
                         <small>{application.eyebrow}</small>
                         <h3>{application.name}</h3>
@@ -464,12 +501,11 @@ export default function Home() {
                         <div className="app-card-footer">
                           <span>{application.signal}</span>
                           <button type="button" onClick={() => launchApp(application.id)}>
-                            {allowed ? "Open app" : "Request access"} <b aria-hidden="true">↗</b>
+                            Open app <b aria-hidden="true">↗</b>
                           </button>
                         </div>
                       </article>
-                    );
-                  })}
+                  ))}
                 </div>
 
                 {protocolOpen && (
@@ -489,7 +525,10 @@ export default function Home() {
 
                 <section className="audit-panel" id="audit" aria-labelledby="audit-title">
                   <div className="section-heading">
-                    <span><small>Security observability</small><h3 id="audit-title">Authentication audit</h3></span>
+                    <span>
+                      <small>{isAdministrator ? "Organization security" : "Your session"}</small>
+                      <h3 id="audit-title">{isAdministrator ? "Workspace authentication audit" : "Your authentication activity"}</h3>
+                    </span>
                     <span className="event-count">{audit.length} events</span>
                   </div>
                   {audit.length ? (
@@ -506,7 +545,11 @@ export default function Home() {
                       ))}
                     </div>
                   ) : (
-                    <p className="empty-state">Open an application to generate an SSO audit event.</p>
+                    <p className="empty-state">
+                      {isAdministrator
+                        ? "Administrative and application access events will appear here."
+                        : "Open an application to generate an activity event."}
+                    </p>
                   )}
                 </section>
               </>
@@ -532,7 +575,7 @@ export default function Home() {
                     <small>Verified ID token</small>
                     <h3>Identity claims</h3>
                     <dl>
-                      <div><dt>sub</dt><dd>usr_vk_2026</dd></div>
+                      <div><dt>sub</dt><dd>{isAdministrator ? "usr_admin_2026" : "usr_member_2026"}</dd></div>
                       <div><dt>email</dt><dd>{session.email}</dd></div>
                       <div><dt>aud</dt><dd>keybridge-{activeApplication.id}</dd></div>
                       <div><dt>roles</dt><dd>{session.roles.join(", ")}</dd></div>
