@@ -1,5 +1,6 @@
 import path from "node:path";
 import webpack from "webpack";
+import { loadDemoCredentials } from "./build/demo-credentials.mjs";
 import {
   moduleRules,
   projectPaths,
@@ -11,6 +12,7 @@ const { ModuleFederationPlugin } = webpack.container;
 
 export default (_environment, argumentsObject) => {
   const production = argumentsObject.mode === "production";
+  const demoCredentials = loadDemoCredentials(projectPaths.root);
 
   return {
     name: "keybridgeRemote",
@@ -36,6 +38,12 @@ export default (_environment, argumentsObject) => {
       poll: 1000,
     },
     plugins: [
+      new webpack.DefinePlugin({
+        "process.env.KEYBRIDGE_MEMBER_EMAIL": JSON.stringify(demoCredentials.KEYBRIDGE_MEMBER_EMAIL),
+        "process.env.KEYBRIDGE_MEMBER_PASSWORD": JSON.stringify(demoCredentials.KEYBRIDGE_MEMBER_PASSWORD),
+        "process.env.KEYBRIDGE_ADMIN_EMAIL": JSON.stringify(demoCredentials.KEYBRIDGE_ADMIN_EMAIL),
+        "process.env.KEYBRIDGE_ADMIN_PASSWORD": JSON.stringify(demoCredentials.KEYBRIDGE_ADMIN_PASSWORD),
+      }),
       new ModuleFederationPlugin({
         name: "keybridgeRemote",
         filename: "remoteEntry.js",

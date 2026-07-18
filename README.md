@@ -42,6 +42,20 @@ Wait until both servers have compiled successfully, then open:
 
 You do not need to open port `3001` separately. To stop both servers, return to the terminal and press `Ctrl+C`.
 
+### 4. Configure local demo credentials
+
+Create your private local settings file before signing in:
+
+```bash
+cp .env.example .env.local
+```
+
+Open `.env.local` and provide fictional member and administrator email addresses and passwords. The file is explicitly ignored by Git and must never be committed.
+
+Restart `npm run dev` after changing `.env.local`, then sign in with one of the locally configured accounts.
+
+> This keeps credential values out of the repository, but it does not turn the browser simulation into production authentication. Values compiled into frontend code can be inspected by a visitor, so never use real credentials or protect real data with this demo.
+
 ### If the application does not start
 
 - Confirm your Node.js version with `node --version`. It must be version 20 or newer.
@@ -69,7 +83,7 @@ You do not need to open port `3001` separately. To stop both servers, return to 
     KeyBridge Experience Remote :3001
        |
        +-- shared React singleton
-       +-- SSO identity chooser
+       +-- Demo credential sign-in
        +-- connected application launcher
        +-- role checks and audit events
 
