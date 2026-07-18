@@ -431,17 +431,18 @@ export default function Home() {
                 <span><strong>{session.name}</strong><small>{isAdministrator ? "Administrator" : "Member"}</small></span>
                 <b aria-hidden="true">⌄</b>
               </button>
-              <div className="profile-popover" aria-label="Account menu">
-                <div className="profile-popover-heading">
-                  <span className={"profile-avatar " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
-                  <span><strong>{session.name}</strong><small>{session.email}</small></span>
+              {!profileOpen && (
+                <div className="profile-popover" aria-label="Account menu">
+                  <div className="profile-popover-heading">
+                    <span className={"profile-avatar " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
+                    <span><strong>{session.name}</strong><small>{session.email}</small></span>
+                  </div>
+                  <div className="profile-popover-status"><StatusDot /> SSO session active</div>
+                  <button type="button" onClick={openProfile}>View profile &amp; security <b aria-hidden="true">→</b></button>
+                  <button className="popover-signout" type="button" onClick={signOut}>Sign out everywhere</button>
                 </div>
-                <div className="profile-popover-status"><StatusDot /> SSO session active</div>
-                <button type="button" onClick={openProfile}>View profile &amp; security <b aria-hidden="true">→</b></button>
-                <button className="popover-signout" type="button" onClick={signOut}>Sign out everywhere</button>
-              </div>
+              )}
             </div>
-            <button className="ghost-button" type="button" onClick={signOut}>Sign out everywhere</button>
           </div>
         ) : (
           <span className="demo-badge"><StatusDot /> Safe demo</span>
