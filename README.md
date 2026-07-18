@@ -4,6 +4,59 @@ KeyBridge is an original single sign-on demonstration implemented as a Webpack 5
 
 > Educational simulation only. KeyBridge does not collect credentials, issue real tokens, or replace a production identity provider.
 
+## Run the application locally
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) version 20 or newer
+- npm (included with Node.js)
+- Git
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Venkatesh-Kandru1/keybridge-sso-lab.git
+cd keybridge-sso-lab
+```
+
+### 2. Install the dependencies
+
+```bash
+npm ci
+```
+
+### 3. Start the application
+
+```bash
+npm run dev
+```
+
+This one command starts both parts of the Module Federation application:
+
+- The remote application runs on port `3001`.
+- The host application runs on port `3000` and loads the remote automatically.
+
+Wait until both servers have compiled successfully, then open:
+
+**http://localhost:3000**
+
+You do not need to open port `3001` separately. To stop both servers, return to the terminal and press `Ctrl+C`.
+
+### If the application does not start
+
+- Confirm your Node.js version with `node --version`. It must be version 20 or newer.
+- Make sure ports `3000` and `3001` are not being used by another application.
+- If dependencies changed, run `npm ci` again and restart `npm run dev`.
+
+## Other useful commands
+
+| Command | Purpose |
+| --- | --- |
+| `npm run build` | Type-check and create production builds for the host and remote. |
+| `npm test` | Build the project and run all automated tests. |
+| `npm run lint` | Check the source code and Webpack configuration. |
+| `npm run typecheck` | Check TypeScript types without creating a build. |
+
 ## Module Federation architecture
 
     Browser
@@ -34,14 +87,6 @@ Production builds place the remote container under dist/remote and configure the
 - Role-based access, global sign-out, illustrative claims, and audit events
 - Responsive, keyboard-friendly interface with reduced-motion support
 - Automated tests for federation artifacts, security-domain logic, and build configuration
-
-## Commands
-
-- npm install — install the locked dependencies
-- npm run dev — start the remote on port 3001, then the host on port 3000
-- npm run build — type-check and create both production compilations
-- npm run lint — check the host, remote, and Webpack configuration
-- npm test — build and run all automated tests
 
 ## Important files
 
