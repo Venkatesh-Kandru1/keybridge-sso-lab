@@ -7,6 +7,7 @@ import {
   createAuthorizationRequest,
   createDemoClaims,
   getVisibleApplicationIds,
+  validateDemoPasswordChange,
 } from "../lib/sso.mjs";
 
 test("authenticates only the documented fictional demo accounts", () => {
@@ -49,6 +50,29 @@ test("shows different application sets to members and administrators", () => {
     "analytics",
     "admin",
   ]);
+});
+
+test("validates local demo password changes", () => {
+  assert.equal(
+    validateDemoPasswordChange("wrong", "CurrentPass1", "NewPassword2", "NewPassword2"),
+    "Current password is incorrect.",
+  );
+  assert.match(
+    validateDemoPasswordChange("CurrentPass1", "CurrentPass1", "short", "short"),
+    /10 characters/,
+  );
+  assert.match(
+    validateDemoPasswordChange("CurrentPass1", "CurrentPass1", "alllowercase2", "alllowercase2"),
+    /uppercase, lowercase, and numeric/,
+  );
+  assert.match(
+    validateDemoPasswordChange("CurrentPass1", "CurrentPass1", "NewPassword2", "DifferentPass3"),
+    /do not match/,
+  );
+  assert.equal(
+    validateDemoPasswordChange("CurrentPass1", "CurrentPass1", "NewPassword2", "NewPassword2"),
+    null,
+  );
 });
 
 test("creates a safe authorization-code request with PKCE", () => {

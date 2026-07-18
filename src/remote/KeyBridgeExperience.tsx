@@ -1,5 +1,9 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { authenticateDemoCredentials, getVisibleApplicationIds } from "../../lib/sso.mjs";
+import {
+  authenticateDemoCredentials,
+  getVisibleApplicationIds,
+  validateDemoPasswordChange,
+} from "../../lib/sso.mjs";
 
 type Persona = {
   name: string;
@@ -15,6 +19,10 @@ type AuditEvent = {
   status: "Success" | "Denied";
   time: string;
 };
+
+type PasswordOverrides = Record<string, string>;
+
+const passwordOverridesKey = "keybridge-demo-password-overrides";
 
 const demoAccounts = [
   {
@@ -86,6 +94,15 @@ const applications = [
 ] as const;
 
 type AppId = (typeof applications)[number]["id"];
+
+function readPasswordOverrides(): PasswordOverrides {
+  try {
+    const storedValue = window.localStorage.getItem(passwordOverridesKey);
+    return storedValue ? JSON.parse(storedValue) as PasswordOverrides : {};
+  } catch {
+    return {};
+  }
+}
 
 function currentTime() {
   return new Intl.DateTimeFormat("en", {
@@ -233,6 +250,13 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [signInError, setSignInError] = useState("");
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordChangeError, setPasswordChangeError] = useState("");
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState("");
 
   const activeApplication = useMemo(
     () => applications.find((application) => application.id === activeApp) ?? null,
@@ -243,6 +267,8 @@ export default function Home() {
   const visibleApplications = applications.filter((application) =>
     visibleApplicationIds.includes(application.id),
   );
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Toronto";
+  const phoneNumber = isAdministrator ? "+1 (416) 555-0198" : "+1 (416) 555-0147";
 
   function addAudit(action: string, detail: string, status: AuditEvent["status"]) {
     setAudit((events) => [
@@ -266,7 +292,12 @@ export default function Home() {
 
   function handleSignIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const persona = authenticateDemoCredentials(demoAccounts, email, password) as Persona | null;
+    const passwordOverrides = readPasswordOverrides();
+    const accountsWithLocalPasswords = demoAccounts.map((account) => ({
+      ...account,
+      password: passwordOverrides[account.persona.email.toLowerCase()] ?? account.password,
+    }));
+    const persona = authenticateDemoCredentials(accountsWithLocalPasswords, email, password) as Persona | null;
 
     if (!persona) {
       setSignInError("The email or password does not match the locally configured demo credentials.");
@@ -277,6 +308,62 @@ export default function Home() {
     setSignInError("");
     setPassword("");
     signIn(persona);
+  }
+
+  function openProfile() {
+    setProfileOpen(true);
+    setProfileMenuOpen(false);
+    setActiveApp(null);
+    setProtocolOpen(false);
+    setPasswordChangeError("");
+    setPasswordChangeSuccess("");
+    setLiveMessage("Profile and security page opened.");
+  }
+
+  function openWorkspace() {
+    setProfileOpen(false);
+    setLiveMessage("Workspace dashboard opened.");
+  }
+
+  function handlePasswordChange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!session) return;
+
+    const account = demoAccounts.find(
+      (candidate) => candidate.persona.email.toLowerCase() === session.email.toLowerCase(),
+    );
+    if (!account) {
+      setPasswordChangeError("The signed-in demo account could not be found.");
+      return;
+    }
+
+    const passwordOverrides = readPasswordOverrides();
+    const accountKey = session.email.toLowerCase();
+    const expectedPassword = passwordOverrides[accountKey] ?? account.password;
+    const validationError = validateDemoPasswordChange(
+      currentPassword,
+      expectedPassword,
+      newPassword,
+      confirmPassword,
+    ) as string | null;
+
+    if (validationError) {
+      setPasswordChangeError(validationError);
+      setPasswordChangeSuccess("");
+      return;
+    }
+
+    window.localStorage.setItem(
+      passwordOverridesKey,
+      JSON.stringify({ ...passwordOverrides, [accountKey]: newPassword }),
+    );
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordChangeError("");
+    setPasswordChangeSuccess("Password updated for this demo account on this device.");
+    addAudit("Password updated", session.email + " changed the local demo password", "Success");
+    setLiveMessage("Demo password updated successfully.");
   }
 
   function launchApp(appId: AppId) {
@@ -301,6 +388,13 @@ export default function Home() {
     setEmail("");
     setPassword("");
     setSignInError("");
+    setProfileOpen(false);
+    setProfileMenuOpen(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordChangeError("");
+    setPasswordChangeSuccess("");
     setLiveMessage("Global sign-out completed across every connected app.");
   }
 
@@ -323,7 +417,31 @@ export default function Home() {
           </nav>
         )}
         {session ? (
-          <button className="ghost-button" type="button" onClick={signOut}>Sign out everywhere</button>
+          <div className="header-account-actions">
+            <div className={"account-menu " + (profileMenuOpen ? "menu-open" : "")}>
+              <button
+                className="account-trigger"
+                type="button"
+                onClick={() => setProfileMenuOpen((open) => !open)}
+                aria-expanded={profileMenuOpen}
+                aria-haspopup="true"
+              >
+                <span className={"profile-avatar " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
+                <span><strong>{session.name}</strong><small>{isAdministrator ? "Administrator" : "Member"}</small></span>
+                <b aria-hidden="true">⌄</b>
+              </button>
+              <div className="profile-popover" aria-label="Account menu">
+                <div className="profile-popover-heading">
+                  <span className={"profile-avatar " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
+                  <span><strong>{session.name}</strong><small>{session.email}</small></span>
+                </div>
+                <div className="profile-popover-status"><StatusDot /> SSO session active</div>
+                <button type="button" onClick={openProfile}>View profile &amp; security <b aria-hidden="true">→</b></button>
+                <button className="popover-signout" type="button" onClick={signOut}>Sign out everywhere</button>
+              </div>
+            </div>
+            <button className="ghost-button" type="button" onClick={signOut}>Sign out everywhere</button>
+          </div>
         ) : (
           <span className="demo-badge"><StatusDot /> Safe demo</span>
         )}
@@ -428,19 +546,79 @@ export default function Home() {
               <small>{isAdministrator ? "Managing 128 workspace members" : "Access follows your assigned roles"}</small>
             </div>
             <nav aria-label="Workspace sections">
-              <button type="button" className={!activeApp ? "active" : ""} onClick={() => setActiveApp(null)}>
+              <button type="button" className={!activeApp && !profileOpen ? "active" : ""} onClick={() => { setActiveApp(null); openWorkspace(); }}>
                 <span aria-hidden="true">⌂</span> {isAdministrator ? "Admin overview" : "My applications"}
               </button>
               <button type="button" onClick={() => setProtocolOpen((open) => !open)}>
                 <span aria-hidden="true">↔</span> {isAdministrator ? "Protocol health" : "Protocol trace"}
               </button>
               <a href="#audit"><span aria-hidden="true">◷</span> {isAdministrator ? "Security audit" : "My activity"}</a>
+              <button type="button" className={profileOpen ? "active" : ""} onClick={openProfile}>
+                <span aria-hidden="true">◎</span> Account profile
+              </button>
             </nav>
             <button className="sidebar-signout" type="button" onClick={signOut}>Sign out everywhere</button>
           </aside>
 
           <div className="workspace-main">
-            {!activeApplication ? (
+            {profileOpen ? (
+              <section className="account-profile-page" aria-labelledby="profile-page-title">
+                <button className="profile-back-button" type="button" onClick={openWorkspace}>← Back to workspace</button>
+                <div className="profile-page-heading">
+                  <span>
+                    <small>My account</small>
+                    <h2 id="profile-page-title">Profile &amp; security</h2>
+                    <p>Review your identity details and manage the password used by this local demo.</p>
+                  </span>
+                  <span className="profile-security-status"><StatusDot /> Identity verified</span>
+                </div>
+
+                <div className="profile-page-grid">
+                  <article className="profile-details-card">
+                    <div className="profile-identity-summary">
+                      <span className={"profile-avatar profile-avatar-large " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
+                      <span>
+                        <small>{isAdministrator ? "Administrator account" : "Member account"}</small>
+                        <h3>{session.name}</h3>
+                        <p>{session.roles.join(" · ")}</p>
+                      </span>
+                    </div>
+                    <dl className="profile-details-list">
+                      <div><dt>Full name</dt><dd>{session.name}</dd></div>
+                      <div><dt>Phone number</dt><dd>{phoneNumber}<small>Fictional demo number</small></dd></div>
+                      <div><dt>Email address</dt><dd>{session.email}</dd></div>
+                      <div><dt>Time zone</dt><dd>{timezone}<small>Detected from this browser</small></dd></div>
+                      <div><dt>Account type</dt><dd>{isAdministrator ? "Workspace administrator" : "Workspace member"}</dd></div>
+                    </dl>
+                  </article>
+
+                  <article className="password-management-card">
+                    <div className="security-card-heading">
+                      <span className="security-card-icon" aria-hidden="true">•••</span>
+                      <span><small>Account security</small><h3>Change password</h3></span>
+                    </div>
+                    <p>Update the password for this fictional account on the current browser only.</p>
+                    <form className="password-change-form" onSubmit={handlePasswordChange}>
+                      <label htmlFor="current-password">Current password</label>
+                      <input id="current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => { setCurrentPassword(event.target.value); setPasswordChangeError(""); setPasswordChangeSuccess(""); }} required />
+                      <label htmlFor="new-password">New password</label>
+                      <input id="new-password" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => { setNewPassword(event.target.value); setPasswordChangeError(""); setPasswordChangeSuccess(""); }} required />
+                      <label htmlFor="confirm-password">Confirm new password</label>
+                      <input id="confirm-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => { setConfirmPassword(event.target.value); setPasswordChangeError(""); setPasswordChangeSuccess(""); }} required />
+                      <ul className="password-requirements" aria-label="Password requirements">
+                        <li>At least 10 characters</li>
+                        <li>Uppercase and lowercase letters</li>
+                        <li>At least one number</li>
+                      </ul>
+                      {passwordChangeError && <p className="password-message error" role="alert">{passwordChangeError}</p>}
+                      {passwordChangeSuccess && <p className="password-message success" role="status">{passwordChangeSuccess}</p>}
+                      <button type="submit">Update demo password</button>
+                    </form>
+                    <div className="local-security-note"><span aria-hidden="true">i</span>This client-side demonstration stores the changed password only in this browser. It is not production credential management.</div>
+                  </article>
+                </div>
+              </section>
+            ) : !activeApplication ? (
               <>
                 <div className="workspace-heading">
                   <span>

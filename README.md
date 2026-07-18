@@ -99,6 +99,8 @@ Production builds place the remote container under dist/remote and configure the
 - Shared singleton React and React DOM dependencies
 - One fictional identity session across five connected applications
 - Role-specific member and administrator workspaces
+- Hover and keyboard-accessible account popover with a dedicated profile page
+- Device-local demo password changes with validation
 - Role-based application visibility, global sign-out, illustrative claims, and audit events
 - Responsive, keyboard-friendly interface with reduced-motion support
 - Automated tests for federation artifacts, security-domain logic, and build configuration
