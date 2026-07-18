@@ -22,7 +22,15 @@ type AuditEvent = {
 
 type PasswordOverrides = Record<string, string>;
 
+type ProfilePreferences = {
+  phoneNumber: string;
+  timezone: string;
+};
+
+type ProfilePreferenceOverrides = Record<string, ProfilePreferences>;
+
 const passwordOverridesKey = "keybridge-demo-password-overrides";
+const profilePreferencesKey = "keybridge-demo-profile-preferences";
 
 const demoAccounts = [
   {
@@ -99,6 +107,15 @@ function readPasswordOverrides(): PasswordOverrides {
   try {
     const storedValue = window.localStorage.getItem(passwordOverridesKey);
     return storedValue ? JSON.parse(storedValue) as PasswordOverrides : {};
+  } catch {
+    return {};
+  }
+}
+
+function readProfilePreferences(): ProfilePreferenceOverrides {
+  try {
+    const storedValue = window.localStorage.getItem(profilePreferencesKey);
+    return storedValue ? JSON.parse(storedValue) as ProfilePreferenceOverrides : {};
   } catch {
     return {};
   }
@@ -258,6 +275,13 @@ export default function Home() {
   const [passwordChangeError, setPasswordChangeError] = useState("");
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [profileEditing, setProfileEditing] = useState(false);
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileTimezone, setProfileTimezone] = useState("");
+  const [draftPhone, setDraftPhone] = useState("");
+  const [draftTimezone, setDraftTimezone] = useState("");
+  const [profileSaveMessage, setProfileSaveMessage] = useState("");
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
 
   const activeApplication = useMemo(
     () => applications.find((application) => application.id === activeApp) ?? null,
@@ -270,6 +294,17 @@ export default function Home() {
   );
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Toronto";
   const phoneNumber = isAdministrator ? "+1 (416) 555-0198" : "+1 (416) 555-0147";
+  const displayedPhone = profilePhone || phoneNumber;
+  const displayedTimezone = profileTimezone || timezone;
+  const timezoneOptions = Array.from(new Set([
+    timezone,
+    "America/Toronto",
+    "America/New_York",
+    "America/Chicago",
+    "America/Los_Angeles",
+    "Europe/London",
+    "Asia/Kolkata",
+  ]));
 
   function addAudit(action: string, detail: string, status: AuditEvent["status"]) {
     setAudit((events) => [
@@ -312,23 +347,78 @@ export default function Home() {
   }
 
   function openProfile() {
+    if (session?.roles.includes("Administrator")) {
+      const storedPreferences = readProfilePreferences()[session.email.toLowerCase()];
+      setProfilePhone(storedPreferences?.phoneNumber ?? "");
+      setProfileTimezone(storedPreferences?.timezone ?? "");
+    }
     setProfileOpen(true);
     setProfileMenuOpen(false);
     setActiveApp(null);
     setProtocolOpen(false);
     setPasswordChangeError("");
     setPasswordChangeSuccess("");
+    setProfileEditing(false);
+    setProfileSaveMessage("");
+    setPasswordModalOpen(false);
     setLiveMessage("Profile and security page opened.");
   }
 
   function openWorkspace() {
     setProfileOpen(false);
+    setPasswordModalOpen(false);
     setLiveMessage("Workspace dashboard opened.");
+  }
+
+  function startProfileEdit() {
+    setDraftPhone(displayedPhone);
+    setDraftTimezone(displayedTimezone);
+    setProfileSaveMessage("");
+    setProfileEditing(true);
+  }
+
+  function saveProfilePreferences() {
+    if (!session || !isAdministrator || !draftPhone.trim() || !draftTimezone) return;
+
+    const preferences = readProfilePreferences();
+    const accountKey = session.email.toLowerCase();
+    const updatedPreferences = {
+      phoneNumber: draftPhone.trim(),
+      timezone: draftTimezone,
+    };
+    window.localStorage.setItem(
+      profilePreferencesKey,
+      JSON.stringify({ ...preferences, [accountKey]: updatedPreferences }),
+    );
+    setProfilePhone(updatedPreferences.phoneNumber);
+    setProfileTimezone(updatedPreferences.timezone);
+    setProfileEditing(false);
+    setProfileSaveMessage("Profile changes saved on this device.");
+    addAudit("Profile updated", session.email + " updated phone number and time zone", "Success");
+    setLiveMessage("Administrator profile changes saved.");
+  }
+
+  function openPasswordModal() {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordChangeError("");
+    setPasswordChangeSuccess("");
+    setPasswordModalOpen(true);
+  }
+
+  function closePasswordModal() {
+    setPasswordModalOpen(false);
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordChangeError("");
+    setPasswordChangeSuccess("");
   }
 
   function handlePasswordChange(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!session) return;
+    if (!session || !isAdministrator) return;
 
     const account = demoAccounts.find(
       (candidate) => candidate.persona.email.toLowerCase() === session.email.toLowerCase(),
@@ -391,6 +481,13 @@ export default function Home() {
     setSignInError("");
     setProfileOpen(false);
     setProfileMenuOpen(false);
+    setProfileEditing(false);
+    setProfilePhone("");
+    setProfileTimezone("");
+    setDraftPhone("");
+    setDraftTimezone("");
+    setProfileSaveMessage("");
+    setPasswordModalOpen(false);
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
@@ -544,7 +641,7 @@ export default function Home() {
               <span className="profile-security-status"><StatusDot /> Identity verified</span>
             </div>
 
-            <div className="profile-page-grid">
+            <div className="profile-page-grid profile-details-only">
               <article className="profile-details-card">
                 <div className="profile-identity-summary">
                   <span className={"profile-avatar profile-avatar-large " + (isAdministrator ? "profile-1" : "profile-0")}>{session.initials}</span>
@@ -556,19 +653,57 @@ export default function Home() {
                 </div>
                 <dl className="profile-details-list">
                   <div><dt>Full name</dt><dd>{session.name}</dd></div>
-                  <div><dt>Phone number</dt><dd>{phoneNumber}<small>Fictional demo number</small></dd></div>
+                  <div>
+                    <dt>Phone number</dt>
+                    <dd>
+                      {isAdministrator && profileEditing ? (
+                        <input className="profile-edit-field" type="tel" aria-label="Phone number" value={draftPhone} onChange={(event) => setDraftPhone(event.target.value)} />
+                      ) : displayedPhone}
+                      <small>Fictional demo number</small>
+                    </dd>
+                  </div>
                   <div><dt>Email address</dt><dd>{session.email}</dd></div>
-                  <div><dt>Time zone</dt><dd>{timezone}<small>Detected from this browser</small></dd></div>
+                  <div>
+                    <dt>Time zone</dt>
+                    <dd>
+                      {isAdministrator && profileEditing ? (
+                        <select className="profile-edit-field" aria-label="Time zone" value={draftTimezone} onChange={(event) => setDraftTimezone(event.target.value)}>
+                          {timezoneOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                        </select>
+                      ) : displayedTimezone}
+                      <small>{profileTimezone ? "Saved on this device" : "Detected from this browser"}</small>
+                    </dd>
+                  </div>
                   <div><dt>Account type</dt><dd>{isAdministrator ? "Workspace administrator" : "Workspace member"}</dd></div>
                 </dl>
+                {isAdministrator && (
+                  <div className="profile-card-actions">
+                    {profileEditing ? (
+                      <>
+                        <button type="button" onClick={saveProfilePreferences} disabled={!draftPhone.trim() || !draftTimezone}>Save changes</button>
+                        <button className="secondary-profile-action" type="button" onClick={() => setProfileEditing(false)}>Cancel</button>
+                      </>
+                    ) : (
+                      <>
+                        <button type="button" onClick={startProfileEdit}>Edit profile</button>
+                        <button className="secondary-profile-action" type="button" onClick={openPasswordModal}>Change password</button>
+                      </>
+                    )}
+                    {profileSaveMessage && <p role="status">{profileSaveMessage}</p>}
+                  </div>
+                )}
               </article>
+            </div>
 
-              <article className="password-management-card">
+            {isAdministrator && passwordModalOpen && (
+              <div className="profile-modal-backdrop" role="presentation" onMouseDown={closePasswordModal}>
+              <article className="password-management-card password-modal" role="dialog" aria-modal="true" aria-labelledby="password-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+                <button className="password-modal-close" type="button" onClick={closePasswordModal} aria-label="Close change password dialog">×</button>
                 <div className="security-card-heading">
                   <span className="security-card-icon" aria-hidden="true">•••</span>
-                  <span><small>Account security</small><h3>Change password</h3></span>
+                  <span><small>Account security</small><h3 id="password-modal-title">Change password</h3></span>
                 </div>
-                <p>Update the password for this fictional account on the current browser only.</p>
+                <p>Update the password for this fictional administrator account on the current browser only.</p>
                 <form className="password-change-form" onSubmit={handlePasswordChange}>
                   <label htmlFor="current-password">Current password</label>
                   <input id="current-password" type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => { setCurrentPassword(event.target.value); setPasswordChangeError(""); setPasswordChangeSuccess(""); }} required />
@@ -587,7 +722,8 @@ export default function Home() {
                 </form>
                 <div className="local-security-note"><span aria-hidden="true">i</span>This client-side demonstration stores the changed password only in this browser. It is not production credential management.</div>
               </article>
-            </div>
+              </div>
+            )}
           </section>
         </section>
       ) : (
