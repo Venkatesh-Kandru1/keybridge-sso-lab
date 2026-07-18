@@ -761,6 +761,14 @@ a {
   padding: 1.5rem;
 }
 
+.admin-workspace .workspace-sidebar {
+  background: #0f2138;
+}
+
+.admin-workspace .workspace-main {
+  background: #f1f5f9;
+}
+
 .sidebar-profile {
   align-items: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -785,6 +793,19 @@ a {
   margin-top: 0.18rem;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.workspace-context {
+  color: #8f92aa;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-top: 0.35rem;
+  text-transform: uppercase;
+}
+
+.admin-workspace .workspace-context {
+  color: #8eb8d9;
 }
 
 .session-health {
@@ -886,6 +907,97 @@ a {
   color: var(--muted);
   font-size: 0.82rem;
   margin: 0;
+}
+
+.workspace-overview {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 2rem;
+}
+
+.workspace-overview article {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  box-shadow: 0 8px 24px rgba(35, 38, 85, 0.04);
+  display: flex;
+  flex-direction: column;
+  min-height: 132px;
+  padding: 1rem;
+  position: relative;
+}
+
+.workspace-overview article::before {
+  background: var(--indigo);
+  border-radius: 999px;
+  content: "";
+  height: 4px;
+  left: 1rem;
+  position: absolute;
+  top: 0;
+  width: 32px;
+}
+
+.admin-overview article::before {
+  background: #2876a8;
+}
+
+.workspace-overview strong {
+  font-size: 1.7rem;
+  letter-spacing: -0.055em;
+  margin-top: 0.55rem;
+}
+
+.workspace-overview span {
+  font-size: 0.7rem;
+  font-weight: 750;
+  margin-top: 0.28rem;
+}
+
+.workspace-overview small {
+  color: #858899;
+  font-size: 0.6rem;
+  line-height: 1.45;
+  margin-top: 0.3rem;
+}
+
+.admin-overview strong {
+  color: #174f72;
+}
+
+.workspace-section-title {
+  align-items: flex-end;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.workspace-section-title small {
+  color: #8a8d9f;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.workspace-section-title h3 {
+  font-size: 1.2rem;
+  letter-spacing: -0.035em;
+  margin: 0.28rem 0 0;
+}
+
+.workspace-section-title p {
+  color: #858899;
+  font-size: 0.64rem;
+  margin: 0;
+}
+
+.admin-workspace .role-pills span:last-child {
+  background: #e5f2fa;
+  border-color: #bfdced;
+  color: #175f8c;
 }
 
 .role-pills {
@@ -1760,6 +1872,10 @@ a:focus-visible {
     grid-template-columns: repeat(2, 1fr);
   }
 
+  .workspace-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .connected-content {
     grid-template-columns: 1fr;
   }
@@ -1847,6 +1963,12 @@ a:focus-visible {
     gap: 1rem;
   }
 
+  .workspace-section-title {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
   .role-pills {
     justify-content: flex-start;
   }
@@ -1903,6 +2025,10 @@ a:focus-visible {
 
   .app-grid,
   .security-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-overview {
     grid-template-columns: 1fr;
   }
 

@@ -6,6 +6,7 @@ import {
   canAccessApplication,
   createAuthorizationRequest,
   createDemoClaims,
+  getVisibleApplicationIds,
 } from "../lib/sso.mjs";
 
 test("authenticates only the documented fictional demo accounts", () => {
@@ -32,6 +33,22 @@ test("enforces application roles", () => {
   assert.equal(canAccessApplication("analytics", ["Member"]), false);
   assert.equal(canAccessApplication("admin", ["Member", "Analyst"]), false);
   assert.equal(canAccessApplication("admin", ["Administrator"]), true);
+});
+
+test("shows different application sets to members and administrators", () => {
+  assert.deepEqual(getVisibleApplicationIds(["Member", "Analyst"]), [
+    "mail",
+    "files",
+    "calendar",
+    "analytics",
+  ]);
+  assert.deepEqual(getVisibleApplicationIds(["Member", "Analyst", "Administrator"]), [
+    "mail",
+    "files",
+    "calendar",
+    "analytics",
+    "admin",
+  ]);
 });
 
 test("creates a safe authorization-code request with PKCE", () => {
