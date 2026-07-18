@@ -1151,6 +1151,10 @@ a {
   grid-template-columns: minmax(0, 1fr) minmax(360px, 0.9fr);
 }
 
+.profile-page-grid.profile-details-only {
+  grid-template-columns: minmax(0, 760px);
+}
+
 .profile-details-card,
 .password-management-card {
   background: white;
@@ -1231,6 +1235,96 @@ a {
   font-size: 0.56rem;
   font-weight: 500;
   margin-top: 0.22rem;
+}
+
+.profile-edit-field {
+  background: #fafaff;
+  border: 1px solid #d9dbe8;
+  border-radius: 0.6rem;
+  color: var(--ink);
+  font: inherit;
+  min-height: 40px;
+  outline: 0;
+  padding: 0.55rem 0.65rem;
+  width: 100%;
+}
+
+.profile-edit-field:focus {
+  border-color: var(--indigo);
+  box-shadow: 0 0 0 3px rgba(88, 86, 214, 0.12);
+}
+
+.profile-card-actions {
+  align-items: center;
+  border-top: 1px solid #ececf3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.35rem;
+  padding-top: 1.2rem;
+}
+
+.profile-card-actions button {
+  background: var(--indigo);
+  border: 1px solid var(--indigo);
+  border-radius: 0.65rem;
+  color: white;
+  font-size: 0.66rem;
+  font-weight: 800;
+  min-height: 40px;
+  padding: 0.65rem 0.9rem;
+}
+
+.profile-card-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.profile-card-actions .secondary-profile-action {
+  background: white;
+  color: var(--indigo-dark);
+}
+
+.profile-card-actions p {
+  color: #24735d;
+  flex-basis: 100%;
+  font-size: 0.62rem;
+  margin: 0;
+}
+
+.profile-modal-backdrop {
+  align-items: center;
+  background: rgba(20, 22, 50, 0.58);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 1.25rem;
+  position: fixed;
+  z-index: 100;
+}
+
+.password-modal {
+  max-height: calc(100vh - 2.5rem);
+  max-width: 560px;
+  overflow-y: auto;
+  position: relative;
+  width: 100%;
+}
+
+.password-modal-close {
+  align-items: center;
+  background: #f0f1f7;
+  border: 0;
+  border-radius: 50%;
+  color: #55586d;
+  display: flex;
+  font-size: 1rem;
+  height: 32px;
+  justify-content: center;
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  width: 32px;
 }
 
 .security-card-heading {
